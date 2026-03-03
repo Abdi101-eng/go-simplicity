@@ -2,15 +2,16 @@ package models
 
 import (
 	"errors"
+	"strings"
 	"time"
 )
 
 type Task struct {
-	Id        int
-	Title     string
-	Done      bool
-	Priority  Priority
-	CreatedAt time.Time
+	Id        int       `json:"id"`
+	Title     string    `json:"title"`
+	Done      bool      `json:"done"`
+	Priority  Priority  `json:"priority"`
+	CreatedAt time.Time `json:"createdat"`
 }
 
 type Priority int
@@ -35,12 +36,12 @@ func (P Priority) String() string {
 }
 
 func PriorityFromString(s string) Priority {
-	switch s {
-	case "Low":
+	switch strings.ToLower(s) {
+	case "low":
 		return Low
-	case "Medium":
+	case "medium":
 		return Medium
-	case "High":
+	case "high":
 		return High
 	default:
 		return Low // Default to Low if the string doesn't match any known priority
@@ -50,7 +51,7 @@ func PriorityFromString(s string) Priority {
 var ErrTaskNotFound = errors.New("task not found")
 
 type TaskStore interface {
-	Add(title string, priority Priority) Task
+	Add(title string, priority Priority) (Task, error)
 	List() []Task
 	Complete(id int) error
 	Delete(id int) error

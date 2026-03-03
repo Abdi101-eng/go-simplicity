@@ -10,8 +10,7 @@ import (
 
 func main() {
 	args := os.Args[1:]
-	store := taskstore.NewStore()
-
+	store, _ := taskstore.NewFileStore("~/tmp/tmp.json")
 	if len(args) == 0 {
 		fmt.Fprintf(os.Stderr, "No command provided. Use 'help' for usage information.")
 		return

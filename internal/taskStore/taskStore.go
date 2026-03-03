@@ -19,7 +19,7 @@ func NewStore() *Store {
 	}
 }
 
-func (s *Store) Add(title string, priority models.Priority) models.Task {
+func (s *Store) Add(title string, priority models.Priority) (models.Task, error) {
 	s.nextId++
 	task := models.Task{
 		Id:        s.nextId,
@@ -29,7 +29,7 @@ func (s *Store) Add(title string, priority models.Priority) models.Task {
 		CreatedAt: time.Now(),
 	}
 	s.list = append(s.list, task)
-	return task
+	return task, nil
 }
 
 func (s *Store) List() []models.Task {

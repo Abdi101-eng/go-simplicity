@@ -26,7 +26,7 @@ func TestAdd(t *testing.T) {
 	for name, element := range storeTests {
 		t.Run(name, func(t *testing.T) {
 			store := Store{}
-			task := store.Add(element.title, element.priority)
+			task, _ := store.Add(element.title, element.priority)
 			if got, want := task.Title, element.expectedTitle; got != want {
 				t.Errorf("title: got %q, want %q", task.Title, element.expectedTitle)
 			}
