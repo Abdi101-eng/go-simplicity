@@ -3,17 +3,28 @@ package main
 import (
 	"abdi/task-manager/internal/models"
 	taskstore "abdi/task-manager/internal/taskStore"
+	"abdi/task-manager/internal/watcher"
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
+	"sync"
+	"time"
 )
 
 func main() {
+
 	args := os.Args[1:]
-	store, _ := taskstore.NewFileStore("~/tmp/tmp.json")
+
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "No command provided. Use 'help' for usage information.")
-		return
+		fmt.Fprintf(os.Stderr, "no command provided. use 'help' for usage\n")
+		os.Exit(1)
+	}
+	store, err := taskstore.NewFileStore("")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
 
 	switch args[0] {
@@ -23,7 +34,20 @@ func main() {
 			os.Exit(1)
 		}
 	case "list":
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			watcher.StartWatcher(ctx, store, 2*time.Second)
+		}()
+
 		runListCommand(store)
+		<-ctx.Done()
+		fmt.Println("\nshutting down...")
+		wg.Wait()
 	case "done":
 		err := runDoneCommand(store, args)
 		if err != nil {
@@ -55,8 +79,14 @@ func runAddCommand(store models.TaskStore, args []string) error {
 	title := args[1]
 	priority := parsePriority(args)
 	fmt.Printf("Adding task: %s with priority %s", title, priority)
-	store.Add(title, models.PriorityFromString(priority))
+	task, err := store.Add(title, models.PriorityFromString(priority))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return err
+	}
+	fmt.Printf("added task #%d\n", task.Id)
 	return nil
+
 }
 
 func runListCommand(store models.TaskStore) {

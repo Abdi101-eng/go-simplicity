@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
 type FileStore struct {
-	path string
-	data fileData
+	path  string
+	data  fileData
+	mutex sync.RWMutex
 }
 
 type fileData struct {
@@ -55,7 +57,9 @@ func NewFileStore(path string) (*FileStore, error) {
 
 }
 
-func (f *FileStore) Save() error {
+func (f *FileStore) save() error {
+	// Add/delete/complete hold the locks beforehand so need to not worry about concurrent access to the file when saving
+
 	dir := filepath.Dir(f.path)
 	// create the dir if doesnt already exist
 	err := os.MkdirAll(dir, 0755)
@@ -87,7 +91,9 @@ func (f *FileStore) Save() error {
 }
 
 func (f *FileStore) Add(title string, priority models.Priority) (models.Task, error) {
-	// When i want to add a task, i want to append to the fileData and then click save?
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	f.data.NextID++
 	task := models.Task{
 		Id:        f.data.NextID,
@@ -97,7 +103,7 @@ func (f *FileStore) Add(title string, priority models.Priority) (models.Task, er
 		CreatedAt: time.Now(),
 	}
 	f.data.Tasks = append(f.data.Tasks, task)
-	err := f.Save()
+	err := f.save()
 	if err != nil {
 		return models.Task{}, fmt.Errorf("filestore: %w", err)
 	}
@@ -105,16 +111,21 @@ func (f *FileStore) Add(title string, priority models.Priority) (models.Task, er
 }
 
 func (f *FileStore) List() []models.Task {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
 	cp := make([]models.Task, len(f.data.Tasks))
 	copy(cp, f.data.Tasks)
 	return cp
 }
 
 func (f *FileStore) Complete(id int) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	for index, element := range f.data.Tasks {
 		if element.Id == id {
 			f.data.Tasks[index].Done = true
-			err := f.Save()
+			err := f.save()
 			if err != nil {
 				return fmt.Errorf("complete: %w", err)
 			}
@@ -125,10 +136,12 @@ func (f *FileStore) Complete(id int) error {
 }
 
 func (f *FileStore) Delete(id int) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	for index, element := range f.data.Tasks {
 		if element.Id == id {
 			f.data.Tasks = append(f.data.Tasks[:index], f.data.Tasks[index+1:]...)
-			err := f.Save()
+			err := f.save()
 			if err != nil {
 				return fmt.Errorf("delete: %w", err)
 			}
