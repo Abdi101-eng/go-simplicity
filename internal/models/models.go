@@ -11,7 +11,7 @@ type Task struct {
 	Title     string    `json:"title"`
 	Done      bool      `json:"done"`
 	Priority  Priority  `json:"priority"`
-	CreatedAt time.Time `json:"createdat"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Priority int

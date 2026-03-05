@@ -2,6 +2,7 @@ package main
 
 import (
 	"abdi/task-manager/internal/models"
+	"abdi/task-manager/internal/server"
 	taskstore "abdi/task-manager/internal/taskStore"
 	"abdi/task-manager/internal/watcher"
 	"context"
@@ -53,6 +54,21 @@ func main() {
 		if err != nil {
 			os.Exit(1)
 		}
+	case "serve":
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+
+		srv := server.New(store)
+
+		go srv.Start(":8080")
+		fmt.Println("server started on :8080")
+
+		<-ctx.Done()
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Stop(shutdownCtx)
+		fmt.Println("shutting down...")
 	case "delete":
 		err := runDeleteCommand(store, args)
 		if err != nil {
